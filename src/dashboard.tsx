@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { centsToLkrString, formatDisplayStamp, type Cents } from '@goldflow/shared'
+import { formatDisplayStamp } from '@goldflow/shared'
 import { moduleOpen } from './access.ts'
 import { permits, repairPace, type Shop } from './desk.ts'
 import type { LiveBoard } from './liveGold.ts'
 import { JewelField } from './ambient.tsx'
 import { money } from './ui.tsx'
+import { CountUp, figure } from './components/dashboard/countUp.tsx'
+import { QuickActions } from './components/dashboard/QuickActions.tsx'
+import { ItemPerformance } from './components/dashboard/ItemPerformance.tsx'
 
 const purityLabel: Record<string, string> = { '24K': '99.9%', '22K': '91.6%', '18K': '75.0%' }
 const purities = ['24K', '22K', '18K'] as const
@@ -21,6 +24,7 @@ export function Dashboard({ desk, board }: { desk: Shop; board: LiveBoard | null
   const available = desk.items.filter((item) => item.status === 'available')
   const seeRates = permits(desk, 'editGoldRates') || permits(desk, 'approveGoldRates')
   const seeSales = permits(desk, 'viewPos') || permits(desk, 'viewProfit') || permits(desk, 'viewLimitedProfit')
+  const seeCost = permits(desk, 'viewProfit') || permits(desk, 'viewPurchases') || permits(desk, 'addProducts') || permits(desk, 'managePurchases')
   const approved = desk.rates.find((rate) => rate.status === 'approved' && rate.rateType === 'shop_selling' && rate.purity === '22K')
   const live = seeRates && board ? board.quotes : null
   const grams = purities.map((purity) => available.filter((item) => item.purity === purity).reduce((sum, item) => sum + Number(item.netGrams), 0))
@@ -151,6 +155,7 @@ export function Dashboard({ desk, board }: { desk: Shop; board: LiveBoard | null
               <Spark values={completed.map((invoice) => invoice.totalCents)} />
             </article>
           ) : null}
+          <QuickActions desk={desk} />
           <article className="dash-card dash-stock dash-reveal" style={{ '--rd': '160ms' } as CSSProperties}>
             <div className="dash-row"><h2>Gold in stock</h2><span className="dash-mute">Total <b><CountUp to={stockGrams} kind="grams" /></b> · {available.length} pieces</span></div>
             <ul className="dash-vault">
@@ -177,6 +182,7 @@ export function Dashboard({ desk, board }: { desk: Shop; board: LiveBoard | null
               </Link>
             ))}
           </article>
+          <ItemPerformance desk={desk} showRevenue={seeSales} showCost={seeCost} />
         </section>
       </div>
     </div>
@@ -259,55 +265,6 @@ function Spark({ values }: { values: number[] }) {
       <p ref={tipRef} className="dash-tip" />
     </div>
   )
-}
-
-function CountUp({ to, kind }: { to: number; kind: 'lkr' | 'grams' | 'rate' }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    const paint = (value: number) => {
-      node.textContent = kind === 'lkr' ? money(Math.round(value)) : kind === 'grams' ? `${value.toFixed(1)} g` : figure(Math.round(value) as Cents)
-    }
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.effects === 'off'
-    if (reduce) {
-      paint(to)
-      return
-    }
-    let frame = 0
-    let start = 0
-    let begun = false
-    const tick = (now: number) => {
-      if (!start) start = now
-      const t = Math.min(1, (now - start) / 900)
-      const eased = 1 - (1 - t) ** 3
-      paint(to * eased)
-      if (t < 1) frame = requestAnimationFrame(tick)
-    }
-    const begin = () => {
-      if (begun) return
-      begun = true
-      frame = requestAnimationFrame(tick)
-    }
-    const rect = node.getBoundingClientRect()
-    const seen = rect.height > 0 && rect.top < window.innerHeight && rect.bottom > 0
-    const watcher = new IntersectionObserver(([entry]) => {
-      if (!entry?.isIntersecting) return
-      watcher.disconnect()
-      begin()
-    })
-    if (seen) begin()
-    else watcher.observe(node)
-    return () => {
-      cancelAnimationFrame(frame)
-      watcher.disconnect()
-    }
-  }, [to, kind])
-  return <span ref={ref}>{kind === 'grams' ? '0.0 g' : kind === 'lkr' ? money(0) : figure(0 as Cents)}</span>
-}
-
-function figure(cents: Cents) {
-  return Number(centsToLkrString(cents)).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function attention(desk: Shop) {

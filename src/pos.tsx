@@ -103,8 +103,6 @@ export function Pos({
   const [last4, setLast4] = useState('')
   const [approval, setApproval] = useState('')
   const [reference, setReference] = useState('')
-  const [openLine, setOpenLine] = useState<string | null>(null)
-  const [discounts, setDiscounts] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [pulse, setPulse] = useState<{ tag: string; detail: string } | null>(null)
@@ -120,7 +118,7 @@ export function Pos({
   const lines = cart.flatMap((tag) => {
     const item = desk.items.find((entry) => entry.tag === tag && entry.status === 'available')
     if (!item) return []
-    const priced = linePrice(desk, item, discounts[tag])
+    const priced = linePrice(desk, item)
     return [{ item, price: priced.price, manual: priced.manual, blocked: priced.blocked }]
   })
   const total = lines.reduce((sum, line) => sum + (line.price?.totalCents ?? 0), 0)
@@ -363,7 +361,6 @@ export function Pos({
     setSlip(posted)
     setCart([])
     setAmount('')
-    setDiscounts({})
     setCopies(0)
     setStage('bill')
     setNotice(null)
@@ -452,10 +449,6 @@ export function Pos({
             newPhone={newPhone}
             setNewPhone={setNewPhone}
             saveCustomer={saveCustomer}
-            discounts={discounts}
-            setDiscounts={setDiscounts}
-            openLine={openLine}
-            setOpenLine={setOpenLine}
             remove={(tag) => setCart((current) => current.filter((entry) => entry !== tag))}
             tax={tax}
             discount={discount}
@@ -583,10 +576,6 @@ function Bill(props: {
   newPhone: string
   setNewPhone: (value: string) => void
   saveCustomer: () => void
-  discounts: Record<string, string>
-  setDiscounts: (value: Record<string, string> | ((current: Record<string, string>) => Record<string, string>)) => void
-  openLine: string | null
-  setOpenLine: (tag: string | null) => void
   remove: (tag: string) => void
   tax: number
   discount: number
@@ -637,28 +626,14 @@ function Bill(props: {
       </div>
       <ul className="min-h-0 flex-1 overflow-auto px-3">
         {props.lines.map((line) => (
-          <li key={line.item.tag} className="border-b border-line py-2 text-sm">
-            <div className="flex items-start justify-between gap-2">
-              <span>{line.item.name}<span className="text-faint block text-xs">{line.item.tag}</span></span>
-              <span className="text-right">
-                <span className="block tabular-nums">{line.price ? money(line.price.totalCents) : '—'}</span>
-                <button type="button" className="min-h-11 text-xs" onClick={() => props.remove(line.item.tag)}>Remove</button>
-              </span>
-            </div>
-            <button type="button" className="min-h-11 text-xs" onClick={() => props.setOpenLine(props.openLine === line.item.tag ? null : line.item.tag)}>{props.openLine === line.item.tag ? 'Hide breakdown' : 'Price breakdown'}</button>
-            {props.openLine === line.item.tag && line.price ? (
-              <div className="text-muted grid gap-1 text-xs">
-                <span className="flex justify-between">Metal <span className="tabular-nums">{money(line.price.metalValueCents)}</span></span>
-                <span className="flex justify-between">Making <span className="tabular-nums">{money(line.price.makingChargeCents)}</span></span>
-                <span className="flex justify-between">Wastage <span className="tabular-nums">{money(line.price.wastageChargeCents)}</span></span>
-                <span className="flex justify-between">Stones <span className="tabular-nums">{money(line.price.stoneValueCents)}</span></span>
-              </div>
-            ) : null}
-            <label className="text-muted mt-1 flex items-center gap-2 text-xs">
-              Discount
-              <input className="min-h-11 w-28 rounded-lg border border-line bg-field px-2 text-right" inputMode="decimal" aria-label={`Discount for ${line.item.tag}`} value={props.discounts[line.item.tag] ?? ''} onChange={(event) => props.setDiscounts((current) => ({ ...current, [line.item.tag]: event.target.value }))} />
-            </label>
-            {line.blocked ? <span className="text-xs text-[var(--danger)]">Above LKR 10,000 needs a manager.</span> : null}
+          <li key={line.item.tag} className="till-line">
+            {photos[line.item.category] ? <img src={photos[line.item.category]} alt="" /> : <Gem compact />}
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold text-[#050608]">{line.item.name}</span>
+              <span className="till-meta mt-0.5 block text-xs">{line.item.tag} · {line.item.purity} · {line.item.netGrams} g</span>
+              <button type="button" className="till-remove" onClick={() => props.remove(line.item.tag)}>Remove</button>
+            </span>
+            <span className="till-line-price tabular-nums">{line.price ? money(line.price.totalCents) : '—'}</span>
           </li>
         ))}
         {props.lines.length === 0 ? <li className="text-muted py-6 text-sm">Scan or tap a piece.</li> : null}
@@ -735,9 +710,9 @@ function Receipt({ slip, paper, onPaper, onPrint, onNew }: { slip: Slip; paper: 
   )
 }
 
-function Gem() {
+function Gem({ compact = false }: { compact?: boolean }) {
   return (
-    <span className="grid h-36 place-items-center bg-[var(--mix-champagne)] text-[var(--gold-text)]">
+    <span className={`grid place-items-center bg-[var(--mix-champagne)] text-[var(--gold-text)] ${compact ? 'till-gem' : 'h-36'}`}>
       <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
         <path d="M12 3 20 9l-8 12L4 9z" />
         <path d="M4 9h16M8 9l4 12 4-12" />
@@ -830,7 +805,7 @@ function safeBreakdown(desk: Shop, tag: string) {
   }
 }
 
-function linePrice(desk: Shop, item: DeskItem, typed: string | undefined) {
+function linePrice(desk: Shop, item: DeskItem, typed?: string) {
   const auto = safeBreakdown(desk, item.tag)
   if (!typed?.trim()) return { price: auto, manual: false, blocked: false }
   try {

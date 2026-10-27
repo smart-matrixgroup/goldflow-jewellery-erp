@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { copyFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
@@ -10,7 +11,7 @@ export default defineConfig(({ mode }) => {
     ...loadEnv(mode, fileURLToPath(new URL('../..', import.meta.url)), ''),
   }
   return {
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), spaFallback()],
   server: {
     port: 5175,
     proxy: {
@@ -52,3 +53,14 @@ export default defineConfig(({ mode }) => {
   },
 }
 })
+
+function spaFallback() {
+  return {
+    name: 'spa-fallback',
+    apply: 'build' as const,
+    closeBundle() {
+      const index = fileURLToPath(new URL('./dist/index.html', import.meta.url))
+      copyFileSync(index, fileURLToPath(new URL('./dist/404.html', import.meta.url)))
+    },
+  }
+}

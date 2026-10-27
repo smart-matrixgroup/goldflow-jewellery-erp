@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import Decimal from 'decimal.js'
 import {
   can,
@@ -130,6 +131,12 @@ export function Products({ desk, run }: { desk: Shop; run: Run }) {
   const [stones, setStones] = useState('')
   const [discount, setDiscount] = useState('0')
   const [pieceCost, setPieceCost] = useState('')
+  const located = useLocation()
+  const focusTag = located.hash.replace('#', '')
+  useEffect(() => {
+    if (!focusTag) return
+    document.getElementById(`piece-${focusTag}`)?.scrollIntoView({ block: 'center' })
+  }, [focusTag])
   return (
     <Screen title="Jewellery master" note="The admin adds each tag and sets the making charge, the stone charge and the discount. The till uses those figures.">
       {canAdd ? (
@@ -183,7 +190,7 @@ export function Products({ desk, run }: { desk: Shop; run: Run }) {
       </div>
       <DataTable title="Showroom tags" columns={['Tag', 'Piece', 'Category', 'Purity', 'Net g', 'Making', 'Stones', 'Discount', 'Status', 'Cost']}>
         {desk.items.map((item) => (
-          <tr key={item.tag}>
+          <tr key={item.tag} id={`piece-${item.tag}`} className={focusTag === item.tag ? 'piece-hit' : undefined}>
             <Td className="font-medium">{item.tag}</Td>
             <Td>{item.name}</Td>
             <Td>{item.category}</Td>
