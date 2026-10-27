@@ -104,7 +104,6 @@ export function DeskBackdrop() {
   )
 }
 
-type Spark = { x: number; y: number; vx: number; vy: number; life: number }
 type Gem = { x: number; y: number; r: number; a: number; w: number; d: number; p: number }
 type Star = { x: number; y: number; s: number; p: number; v: number; u: number }
 
@@ -126,7 +125,6 @@ export function JewelField() {
     let py = 0
     let stars: Star[] = []
     let gems: Gem[] = []
-    let trail: Spark[] = []
     let frame = 0
     let stopped = false
     let running = true
@@ -135,8 +133,6 @@ export function JewelField() {
     let frames = 0
     let accum = 0
     let last = performance.now()
-    let lastX = 0
-    let lastY = 0
 
     const star = (x: number, y: number, size: number, alpha: number, ink = '201,162,77') => {
       ctx.fillStyle = `rgba(${ink},${alpha})`
@@ -235,13 +231,6 @@ export function JewelField() {
           const alpha = 0.15 + 0.55 * Math.max(0, Math.sin(now * 0.001 * flake.v + flake.p))
           star(flake.x + px * 8, flake.y, flake.s * (0.6 + alpha), alpha)
         }
-        trail = trail.filter((spark) => spark.life > 0)
-        for (const spark of trail) {
-          spark.life -= step / 650
-          spark.x += (spark.vx * step) / 1000
-          spark.y += (spark.vy * step) / 1000
-          star(spark.x, spark.y, 3 + 7 * spark.life, Math.max(0, spark.life) * 0.9, '184,140,48')
-        }
         const sweep = (((now / 9000) % 1.6) - 0.3) * (width + height)
         const wash = ctx.createLinearGradient(sweep - 160, 0, sweep + 160, height)
         wash.addColorStop(0, 'rgba(255,255,255,0)')
@@ -261,14 +250,6 @@ export function JewelField() {
       const box = parent.getBoundingClientRect()
       px = ((event.clientX - box.left) / Math.max(box.width, 1) - 0.5) * 2
       py = ((event.clientY - box.top) / Math.max(box.height, 1) - 0.5) * 2
-      const x = event.clientX - box.left
-      const y = event.clientY - box.top
-      if (x < 0 || y < 0 || x > box.width || y > box.height) return
-      if (running && Math.hypot(x - lastX, y - lastY) > 16 && trail.length < 40) {
-        lastX = x
-        lastY = y
-        trail.push({ x, y, vx: rnd(-24, 24), vy: rnd(-46, -8), life: 1 })
-      }
     }
 
     const paintGems = (now: number) => {
