@@ -87,6 +87,27 @@ export function ErpApp() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    if (document.documentElement.dataset.effects === 'off') return
+    let frame = 0
+    const tick = (now: number) => {
+      const turn = now / 1000
+      document.querySelectorAll<HTMLElement>('.gate-ring').forEach((ring, index) => {
+        const speed = index === 1 ? -110 : 70 + index * 45
+        ring.style.transform = `rotate(${turn * speed}deg)`
+      })
+      document.querySelectorAll<HTMLElement>('.gate-sweep, .brand-orbit').forEach((node) => {
+        node.style.transform = `rotate(${turn * 160}deg)`
+      })
+      document.querySelectorAll<HTMLElement>('.gate-gem, .brand-mark svg').forEach((node) => {
+        node.style.transform = `rotate(${turn * 90}deg)`
+      })
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [session])
+
+  useEffect(() => {
     const nav = navRef.current
     const pill = nav?.querySelector<HTMLElement>('.nav-pill')
     if (!nav || !pill) return
@@ -229,36 +250,80 @@ export function ErpApp() {
 
   if (!session) {
     return (
-      <main className="grid min-h-svh place-items-center bg-paper px-4">
-        <form
-          className="lux-card w-full max-w-md p-7"
-          onSubmit={(event) => {
-            event.preventDefault()
-            const person = desk.accounts.find((entry) => entry.email === email)
-            if (!person || person.password !== password) {
-              setLoginError('That email or password does not match a desk account.')
-              return
-            }
-            setLoginError(null)
-            choose(person)
-          }}
-        >
-          <p className="font-serif text-3xl text-gold">GoldFlow</p>
-          <h1 className="mt-1 text-sm tracking-[0.22em] text-muted uppercase">Jewellery ERP</h1>
-          <p className="mt-2 text-sm text-muted">Sign in with a desk account. The first passwords are the role names: owner, manager, cashier, accountant, store.</p>
-          <label className="mt-4 grid gap-1 text-xs text-muted">
-            Email
-            <select className="h-10 rounded-lg border border-line bg-field px-2 text-sm text-ink" value={email} onChange={(event) => setEmail(event.target.value)}>
-              {desk.accounts.map((person) => <option key={person.id} value={person.email}>{person.name} · {person.email}</option>)}
-            </select>
-          </label>
-          <label className="mt-3 grid gap-1 text-xs text-muted">
-            Password
-            <input className="h-10 rounded-lg border border-line bg-field px-2 text-sm text-ink" type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-          </label>
-          {loginError ? <p className="mt-3 text-sm text-rose-300">{loginError}</p> : null}
-          <button type="submit" className="btn-accent mt-5 h-11 w-full rounded-xl text-sm font-semibold">Sign in</button>
-        </form>
+      <main className="gate">
+        <div className="gate-sky" aria-hidden="true">
+          <span className="gate-orb gate-orb-a" />
+          <span className="gate-orb gate-orb-b" />
+          <span className="gate-dust" />
+          <span className="gate-dust" />
+          <span className="gate-dust" />
+          <span className="gate-dust" />
+          <span className="gate-dust" />
+          <span className="gate-dust" />
+        </div>
+        <section className="gate-story">
+          <div className="gate-orbit" aria-hidden="true">
+            <span className="gate-sweep" />
+            <span className="gate-ring gate-ring-a"><i /></span>
+            <span className="gate-ring gate-ring-b"><i /></span>
+            <span className="gate-ring gate-ring-c"><i /></span>
+            <span className="gate-core">
+              <svg className="gate-gem" viewBox="0 0 64 64">
+                <defs>
+                  <linearGradient id="gate-gold" x1="12" y1="6" x2="52" y2="58" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#99f6e4" />
+                    <stop offset="0.42" stopColor="#0f766e" />
+                    <stop offset="1" stopColor="#8a6a24" />
+                  </linearGradient>
+                </defs>
+                <path fill="url(#gate-gold)" d="M32 4 54 24 32 60 10 24Z" />
+                <path fill="none" stroke="#fde68a" strokeWidth="1.4" d="M10 24h44M22 24 32 60 42 24" />
+              </svg>
+            </span>
+          </div>
+          <p className="gate-word">GoldFlow</p>
+          <p className="gate-kicker">Jewellery desk</p>
+          <h1>Every piece, from the case to the bill.</h1>
+          <p className="gate-lead">The till, the tagged stock, the repairs, and the approved selling rate live on this desk.</p>
+          <ul className="gate-points">
+            <li><span className="gate-ico gate-ico-till" aria-hidden="true" /><span><b>Till</b>Scan a tag and take the bill</span></li>
+            <li><span className="gate-ico gate-ico-stock" aria-hidden="true" /><span><b>Stock</b>Each piece keeps its tag</span></li>
+            <li><span className="gate-ico gate-ico-repair" aria-hidden="true" /><span><b>Repairs</b>Due dates stay in view</span></li>
+            <li><span className="gate-ico gate-ico-rate" aria-hidden="true" /><span><b>Rates</b>The till sells on the approved rate</span></li>
+          </ul>
+        </section>
+        <section className="gate-panel">
+          <form
+            className="gate-card"
+            onSubmit={(event) => {
+              event.preventDefault()
+              const person = desk.accounts.find((entry) => entry.email === email)
+              if (!person || person.password !== password) {
+                setLoginError('That email or password does not match a desk account.')
+                return
+              }
+              setLoginError(null)
+              choose(person)
+            }}
+          >
+            <span className="gate-avatar" aria-hidden="true" />
+            <h2>Welcome back</h2>
+            <p className="gate-note">Sign in with a desk account.</p>
+            <label className="gate-field">
+              Desk account
+              <select value={email} onChange={(event) => setEmail(event.target.value)}>
+                {desk.accounts.map((person) => <option key={person.id} value={person.email}>{person.name} · {person.email}</option>)}
+              </select>
+            </label>
+            <label className="gate-field">
+              Password
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" />
+            </label>
+            {loginError ? <p className="gate-error" role="alert">{loginError}</p> : null}
+            <button type="submit" className="gate-submit">Sign in</button>
+            <p className="gate-hint">Demo passwords are the role names: owner, manager, cashier, accountant, store.</p>
+          </form>
+        </section>
       </main>
     )
   }
@@ -277,11 +342,12 @@ export function ErpApp() {
     <div className="h-svh overflow-hidden bg-paper text-ink md:grid md:grid-cols-[248px_1fr]">
       <aside className="erp-side hidden h-svh min-h-0 flex-col md:flex">
         <div className="flex shrink-0 items-center gap-3 px-4 pt-4 pb-2">
-          <span className="mark grid h-10 w-10 place-items-center rounded-xl">
+          <span className="mark brand-mark grid h-10 w-10 place-items-center rounded-xl">
+            <span className="brand-orbit" aria-hidden="true" />
             <Diamond />
           </span>
           <span>
-            <span className="block font-serif text-xl leading-none text-gold">GoldFlow</span>
+            <span className="brand-name block font-serif text-xl leading-none">GoldFlow</span>
             <span className="mt-1 block text-[10px] tracking-[0.22em] text-muted">JEWELLERY ERP</span>
           </span>
         </div>
@@ -325,7 +391,7 @@ export function ErpApp() {
             }}
           >
             <input
-              className="h-10 w-full rounded-full border border-line bg-field pr-4 pl-10 text-sm"
+              className="desk-search h-10 rounded-full border border-line bg-field pr-4 pl-10 text-sm"
               placeholder="Search invoice, tag, customer, supplier"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -343,9 +409,9 @@ export function ErpApp() {
             ) : null}
           </form>
           <span className="hidden items-center gap-2 rounded-full border border-line px-3 py-2 text-xs text-muted lg:inline-flex">Ward Place</span>
-          <button type="button" className="relative grid h-10 w-10 place-items-center rounded-full border border-line text-gold" aria-label="Notifications" onClick={() => setAlertsOpen((open) => !open)}>
+          <button type="button" className="desk-bell relative grid h-10 w-10 place-items-center rounded-full border border-line text-gold" aria-label="Notifications" onClick={() => setAlertsOpen((open) => !open)}>
             <Bell />
-            {alerts.length > 0 ? <span className="bg-accent text-on-accent absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold">{alerts.length}</span> : null}
+            {alerts.length > 0 ? <span className="desk-badge bg-accent text-on-accent absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-semibold">{alerts.length}</span> : null}
           </button>
           {alertsOpen ? (
             <div className="lux-card absolute top-16 right-28 z-30 w-80 p-4 text-sm">

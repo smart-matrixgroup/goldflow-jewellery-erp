@@ -107,8 +107,7 @@ export function Pos({
   const [discounts, setDiscounts] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [pulse, setPulse] = useState<string | null>(null)
-  const [confirmAdd, setConfirmAdd] = useState<{ name: string; detail: string; price: string } | null>(null)
+  const [pulse, setPulse] = useState<{ tag: string; detail: string } | null>(null)
   const [slip, setSlip] = useState<Slip | null>(null)
   const [paper, setPaper] = useState<'80' | 'a4'>('80')
   const [copies, setCopies] = useState(0)
@@ -129,7 +128,7 @@ export function Pos({
   const discount = lines.reduce((sum, line) => sum + (line.price?.discountCents ?? 0), 0)
   const oldGold = Math.min(customer?.oldGoldCents ?? 0, total)
   const bill = changeDue(total, 0, oldGold)
-  const tender = useMemo(() => readRupees(amount), [amount])
+  const tender = useMemo(() => (amount.trim() ? readRupees(amount) : null), [amount])
   const settled = changeDue(total, tender ?? 0, oldGold)
   const splitCents = splits.map((row) => ({ ...row, cents: readRupees(row.amount) }))
   const splitTotal = splitCents.reduce((sum, row) => sum + (row.cents ?? 0), 0)
@@ -153,12 +152,6 @@ export function Pos({
   useEffect(() => {
     searchRef.current?.focus()
   }, [])
-
-  useEffect(() => {
-    if (!confirmAdd) return
-    const timer = window.setTimeout(() => setConfirmAdd(null), 1700)
-    return () => window.clearTimeout(timer)
-  }, [confirmAdd])
 
   useEffect(() => {
     if (stage === 'items' || stage === 'bill') return
@@ -199,13 +192,8 @@ export function Pos({
     setCart((current) => (current.includes(tag) ? current : [...current, tag]))
     setNotice(null)
     setStage('items')
-    setPulse(tag)
-    window.setTimeout(() => setPulse((current) => (current === tag ? null : current)), 600)
-    setConfirmAdd({
-      name: item.name,
-      detail: already ? 'Already on this bill' : 'Added to the bill',
-      price: money(price.totalCents),
-    })
+    setPulse({ tag, detail: already ? 'Already on this bill' : 'Added to the bill' })
+    window.setTimeout(() => setPulse((current) => (current?.tag === tag ? null : current)), 1100)
   }
 
   function takeSearch() {
@@ -278,7 +266,6 @@ export function Pos({
 
   function chooseMethod(next: PayMethod) {
     setMethod(next)
-    if ((next === 'card' || next === 'bank_transfer') && !amount.trim()) setAmount(centsToLkrString(bill.owing))
   }
 
   function typeAmount(key: string) {
@@ -385,23 +372,23 @@ export function Pos({
   return (
     <div className="till bg-canvas relative grid h-svh grid-rows-[auto_minmax(0,1fr)] overflow-hidden text-ink">
       <DeskBackdrop />
-      <header className="bg-header flex h-16 items-center gap-3 border-b border-line px-4">
-        <button type="button" className="flex min-h-11 items-center gap-2 rounded-full border border-line px-3 text-sm" onClick={onClose}>Desk</button>
-        <span className="mark grid h-9 w-9 place-items-center rounded-xl" aria-hidden="true">
+      <header className="till-head flex h-16 items-center gap-3 border-b border-line px-4">
+        <button type="button" className="flex min-h-11 items-center gap-2 rounded-full border border-line px-3 text-sm font-semibold text-[#050608]" onClick={onClose}>Desk</button>
+        <span className="mark brand-mark grid h-9 w-9 place-items-center rounded-xl" aria-hidden="true">
+          <span className="brand-orbit" />
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M3 9h18L12 21 3 9zM3 9l4-5h10l4 5" /></svg>
         </span>
-        <span className="font-serif text-lg leading-none">GoldFlow</span>
-        <ol className="mx-auto hidden items-center gap-2 text-sm md:flex">
+        <span className="till-brand brand-name font-serif text-lg leading-none">GoldFlow</span>
+        <ol className="till-steps mx-auto hidden text-sm md:flex">
           {steps.map((step, index) => (
-            <li key={step.id} className="flex items-center gap-2">
-              <span className={stage === step.id ? 'text-numeral font-semibold' : 'text-muted'}>{index + 1}. {step.label}</span>
-              {index < steps.length - 1 ? <span className="text-faint" aria-hidden="true">→</span> : null}
+            <li key={step.id}>
+              <span className={`till-step ${stage === step.id ? 'on' : ''}`}>{index + 1}. {step.label}</span>
             </li>
           ))}
         </ol>
-        <span className="ml-auto text-right text-xs">
+        <span className="ml-auto text-right text-xs font-semibold text-[#050608]">
           <span className="block">{cashier}</span>
-          <span className="text-faint">Ward Place</span>
+          <span className="block font-medium">Ward Place</span>
         </span>
       </header>
       {missingRate ? <p className="border-b border-line bg-[var(--mix-blush)] px-4 py-2 text-sm text-[var(--danger)]">No approved selling rate. Nothing can be sold at zero.</p> : null}
@@ -416,7 +403,7 @@ export function Pos({
               {categories.map((entry) => {
                 const count = desk.items.filter((item) => entry === 'All' || item.category === entry).length
                 return (
-                  <button key={entry} type="button" className={`min-h-11 shrink-0 rounded-full px-3 text-sm ${category === entry ? 'bg-accent text-on-accent' : 'text-muted border border-line'}`} onClick={() => setCategory(entry)}>
+                  <button key={entry} type="button" className={`till-chip min-h-11 shrink-0 rounded-full px-4 text-sm ${category === entry ? 'on' : ''}`} onClick={() => setCategory(entry)}>
                     {entry} · {count}
                   </button>
                 )
@@ -427,17 +414,22 @@ export function Pos({
                 const price = item.status === 'available' ? safeBreakdown(desk, item.tag) : null
                 const open = item.status === 'available' && price
                 return (
-                  <button key={item.tag} type="button" disabled={!open} className={`hover-surface bg-paper overflow-hidden rounded-2xl border border-line text-left ${pulse === item.tag ? 'tile-added' : ''} ${open ? '' : 'opacity-50'}`} onClick={() => add(item.tag)}>
-                    {photos[item.category] ? <img src={photos[item.category]} alt="" className="tile-photo h-40 w-full object-cover" /> : <Gem />}
-                    <span className="block p-3">
-                      <span className="block font-medium">{item.name}</span>
-                      <span className="mt-2 flex flex-wrap gap-1 text-xs">
-                        <span className="rounded-full bg-[var(--mix-champagne)] px-2 py-1 text-[var(--gold-text)]">{item.purity}</span>
-                        <span className="rounded-full bg-[var(--mix-sky)] px-2 py-1">{item.netGrams} g</span>
-                        <span className={`rounded-full px-2 py-1 ${open ? 'bg-[var(--mix-mint)] text-[var(--ok)]' : 'bg-[var(--mix-blush)] text-[var(--danger)]'}`}>{open ? 'Available' : 'Sold'}</span>
-                      </span>
-                      <span className="text-numeral mt-2 block font-serif text-xl tabular-nums">{price ? money(price.totalCents) : '—'}</span>
+                  <button key={item.tag} type="button" disabled={!open} className={`hover-surface till-card overflow-hidden rounded-2xl border border-line text-left ${pulse?.tag === item.tag ? 'tile-added' : ''} ${open ? '' : 'opacity-50'}`} onClick={() => add(item.tag)}>
+                    {photos[item.category] ? <img src={photos[item.category]} alt="" className="tile-photo h-36 w-full object-cover" /> : <Gem />}
+                    <span className="block px-3.5 py-3">
+                      <span className="block text-[15px] font-semibold text-[#050608]">{item.name}</span>
+                      <span className="till-meta mt-1 block text-xs">{item.purity} · {item.netGrams} g · {open ? 'Available' : 'Sold'}</span>
+                      <span className="till-price mt-2 block font-serif text-xl tabular-nums">{price ? money(price.totalCents) : '—'}</span>
                     </span>
+                    {pulse?.tag === item.tag ? (
+                      <span className="tile-seal" role="status">
+                        <span className="tile-seal-gem" aria-hidden="true">✓</span>
+                        <span className="tile-seal-copy">
+                          <span>{pulse.detail}</span>
+                          <span>{price ? money(price.totalCents) : item.name}</span>
+                        </span>
+                      </span>
+                    ) : null}
                   </button>
                 )
               })}
@@ -547,7 +539,7 @@ export function Pos({
                   </label>
                 ) : null}
                 {method === 'credit' ? <p className="text-muted mt-2 text-sm">Amount still owed {money(Math.max(0, bill.owing - (tender ?? 0)))}. A bill with nothing received is not stored.</p> : null}
-                {method === 'cash' ? <p className="mt-2 font-serif text-2xl tabular-nums">{settled.balance > 0 ? `Balance ${money(settled.balance)}` : `Change due ${money(settled.change)}`}</p> : null}
+                {method === 'cash' && amount.trim() ? <p className="mt-2 font-serif text-2xl tabular-nums">{settled.balance > 0 ? `Balance ${money(settled.balance)}` : `Change due ${money(settled.change)}`}</p> : null}
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" className="min-h-11 rounded-full border border-line px-3 text-sm" onClick={() => setAmount(centsToLkrString(bill.owing))}>Exact</button>
                   {[100, 500, 1000].map((step) => (
@@ -569,14 +561,6 @@ export function Pos({
         <section ref={sheetRef} className="grid min-h-0 place-items-center overflow-auto p-4">
           <Receipt slip={{ ...slip, duplicate: copies > 0 }} paper={paper} onPaper={setPaper} onPrint={() => { window.print(); setCopies((count) => count + 1) }} onNew={() => { setSlip(null); setStage('items'); searchRef.current?.focus() }} />
         </section>
-      ) : null}
-      {confirmAdd ? (
-        <div className="add-confirm" role="status">
-          <span className="add-ring">✓</span>
-          <p className="text-xs tracking-[0.16em] uppercase">{confirmAdd.detail}</p>
-          <p className="font-serif text-xl">{confirmAdd.name}</p>
-          <p className="tabular-nums">{confirmAdd.price}</p>
-        </div>
       ) : null}
     </div>
   )
@@ -616,11 +600,12 @@ function Bill(props: {
   onResume: () => void
 }) {
   return (
-    <aside className="desk-hero flex min-h-0 flex-col border-t border-line min-[1024px]:border-t-0 min-[1024px]:border-l">
-      <div className="border-b border-line p-3">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">Existing customer</p>
-          <button type="button" className="min-h-11 text-sm" onClick={() => { props.setNamed(false); props.setAdding((open) => !open) }}>{props.adding ? 'Existing' : 'New customer'}</button>
+    <aside className="till-bill desk-hero flex min-h-0 flex-col border-t border-line min-[1024px]:border-t-0 min-[1024px]:border-l">
+      <div className="border-b border-line p-4">
+        <p className="till-kicker">This bill</p>
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-sm font-semibold text-[#050608]">Existing customer</p>
+          <button type="button" className="min-h-11 text-sm font-semibold text-[#050608]" onClick={() => { props.setNamed(false); props.setAdding((open) => !open) }}>{props.adding ? 'Existing' : 'New customer'}</button>
         </div>
         {props.adding ? (
           <div className="mt-2 grid gap-2">
@@ -682,7 +667,7 @@ function Bill(props: {
         <p className="flex justify-between"><span>Discount</span><span className="tabular-nums">{money(props.discount)}</span></p>
         <p className="flex justify-between"><span>Tax</span><span className="tabular-nums">{money(props.tax)}</span></p>
         {props.oldGold > 0 ? <p className="flex justify-between"><span>Old-gold credit</span><span className="tabular-nums">{money(props.oldGold)}</span></p> : null}
-        <p className="text-numeral flex justify-between font-serif text-3xl"><span>Total</span><span className="tabular-nums">{money(props.total)}</span></p>
+        <p className="till-total flex justify-between font-serif text-3xl"><span>Total</span><span className="tabular-nums">{money(props.total)}</span></p>
       </div>
       {props.confirmBlock ? <p className="text-muted px-3 text-xs">{props.confirmBlock}</p> : null}
       <div className="grid grid-cols-[1fr_auto_auto] gap-2 p-3">
@@ -752,7 +737,7 @@ function Receipt({ slip, paper, onPaper, onPrint, onNew }: { slip: Slip; paper: 
 
 function Gem() {
   return (
-    <span className="grid h-40 place-items-center bg-[var(--mix-champagne)] text-[var(--gold-text)]">
+    <span className="grid h-36 place-items-center bg-[var(--mix-champagne)] text-[var(--gold-text)]">
       <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
         <path d="M12 3 20 9l-8 12L4 9z" />
         <path d="M4 9h16M8 9l4 12 4-12" />

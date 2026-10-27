@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { centsToLkrString, formatDisplayStamp, type Cents } from '@goldflow/shared'
 import { moduleOpen } from './access.ts'
@@ -31,31 +31,86 @@ export function Dashboard({ desk, board }: { desk: Shop; board: LiveBoard | null
   useEffect(() => {
     const node = root.current
     if (!node) return
-    const frame = requestAnimationFrame(() => node.classList.add('go'))
-    const motion = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const fine = window.matchMedia('(pointer: fine)')
-    if (motion.matches || !fine.matches || document.documentElement.dataset.effects === 'off') {
-      return () => cancelAnimationFrame(frame)
+    const shown = requestAnimationFrame(() => node.classList.add('go'))
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.effects === 'off'
+    const fine = window.matchMedia('(hover: hover)').matches && window.matchMedia('(pointer: fine)').matches
+    // Tilt, parallax, and the magnetic button stay off for touch and reduced motion.
+    if (reduce || !fine) return () => cancelAnimationFrame(shown)
+
+    let raf = 0
+    let px = 0
+    let py = 0
+    const jewel = node.parentElement?.querySelector<HTMLElement>('.jewel-field') ?? null
+    const stage = node.querySelector<HTMLElement>('.dash-stage')
+    const magnet = node.querySelector<HTMLElement>('.mag span')
+    const magnetHost = node.querySelector<HTMLElement>('.mag')
+
+    const apply = () => {
+      raf = 0
+      const card = node.querySelector<HTMLElement>('.dash-card:hover')
+      if (card) {
+        const rect = card.getBoundingClientRect()
+        const nx = (px - rect.left) / rect.width
+        const ny = (py - rect.top) / rect.height
+        card.style.setProperty('--mx', `${(nx * 100).toFixed(1)}%`)
+        card.style.setProperty('--my', `${(ny * 100).toFixed(1)}%`)
+        card.style.setProperty('--ry', `${((nx - 0.5) * 12).toFixed(2)}deg`)
+        card.style.setProperty('--rx', `${((0.5 - ny) * 12).toFixed(2)}deg`)
+      }
+      if (jewel) {
+        const box = node.getBoundingClientRect()
+        jewel.style.setProperty('--jx', ((px - box.left) / box.width - 0.5).toFixed(3))
+        jewel.style.setProperty('--jy', ((py - box.top) / box.height - 0.5).toFixed(3))
+      }
+      if (stage) {
+        const rect = stage.getBoundingClientRect()
+        const over = px >= rect.left && px <= rect.right && py >= rect.top && py <= rect.bottom
+        stage.style.setProperty('--hx', over ? ((px - rect.left) / rect.width - 0.5).toFixed(3) : '0')
+        stage.style.setProperty('--hy', over ? ((py - rect.top) / rect.height - 0.5).toFixed(3) : '0')
+      }
+      if (magnet && magnetHost) {
+        const rect = magnetHost.getBoundingClientRect()
+        const over = px >= rect.left - 24 && px <= rect.right + 24 && py >= rect.top - 24 && py <= rect.bottom + 24
+        if (over) {
+          const dx = px - (rect.left + rect.width / 2)
+          const dy = py - (rect.top + rect.height / 2)
+          magnet.style.transform = `translate(${(dx * 0.28).toFixed(1)}px, ${(dy * 0.28).toFixed(1)}px)`
+        } else magnet.style.transform = ''
+      }
     }
     const onMove = (event: PointerEvent) => {
-      const card = (event.target as HTMLElement | null)?.closest?.('.dash-card') as HTMLElement | null
-      if (!card || !node.contains(card)) return
-      const rect = card.getBoundingClientRect()
-      card.style.setProperty('--px', (((event.clientX - rect.left) / rect.width - 0.5) * 2).toFixed(3))
-      card.style.setProperty('--py', (((event.clientY - rect.top) / rect.height - 0.5) * 2).toFixed(3))
+      px = event.clientX
+      py = event.clientY
+      if (!raf) raf = requestAnimationFrame(apply)
     }
-    const onLeave = (event: Event) => {
+    const onLeaveCard = (event: Event) => {
       const card = event.currentTarget as HTMLElement
-      card.style.setProperty('--px', '0')
-      card.style.setProperty('--py', '0')
+      card.style.setProperty('--rx', '0deg')
+      card.style.setProperty('--ry', '0deg')
+      card.style.setProperty('--mx', '50%')
+      card.style.setProperty('--my', '30%')
+    }
+    const onDown = (event: PointerEvent) => {
+      const host = (event.target as HTMLElement | null)?.closest?.('.mag') as HTMLElement | null
+      if (!host || !node.contains(host)) return
+      const rect = host.getBoundingClientRect()
+      const ripple = document.createElement('i')
+      ripple.className = 'mag-ripple'
+      ripple.style.left = `${event.clientX - rect.left}px`
+      ripple.style.top = `${event.clientY - rect.top}px`
+      host.appendChild(ripple)
+      ripple.addEventListener('animationend', () => ripple.remove(), { once: true })
     }
     const cards = [...node.querySelectorAll<HTMLElement>('.dash-card')]
-    for (const card of cards) card.addEventListener('pointerleave', onLeave)
+    for (const card of cards) card.addEventListener('pointerleave', onLeaveCard)
     node.addEventListener('pointermove', onMove)
+    node.addEventListener('pointerdown', onDown)
     return () => {
-      cancelAnimationFrame(frame)
+      cancelAnimationFrame(shown)
+      cancelAnimationFrame(raf)
       node.removeEventListener('pointermove', onMove)
-      for (const card of cards) card.removeEventListener('pointerleave', onLeave)
+      node.removeEventListener('pointerdown', onDown)
+      for (const card of cards) card.removeEventListener('pointerleave', onLeaveCard)
     }
   }, [])
 
@@ -68,51 +123,51 @@ export function Dashboard({ desk, board }: { desk: Shop; board: LiveBoard | null
             <p className="dash-eyebrow">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Colombo' })}</p>
             <h1>{greeting}, <em>{name}</em></h1>
           </div>
-          {moduleOpen(desk, '/pos') ? <Link className="dash-sale" to="/pos">New sale</Link> : null}
+          {moduleOpen(desk, '/pos') ? <Link className="dash-sale mag" to="/pos"><span>New sale</span></Link> : null}
         </header>
         <section className="dash-bento">
           {seeRates ? (
-            <article className="dash-card dash-stage">
+            <article className="dash-card dash-stage dash-reveal" style={{ '--rd': '0ms' } as CSSProperties}>
               <div>
                 <h2>Gold rates</h2>
-                <p className="dash-lead dash-dp">Today’s <em>gold</em>, per gram</p>
+                <p className="dash-lead">Today’s <em>gold</em>, per gram</p>
                 <span className={`dash-badge ${live ? 'live' : ''}`}><i />{live ? `Live market · ${formatDisplayStamp(board?.fetchedAt ?? '')}` : 'Snapshot · approved shop rate'}</span>
                 <p className="dash-note">{live ? 'The coins use the market board. Hover or tap a coin for the source. The till still sells on the approved shop rate.' : 'This is the rate the till uses. It is not a live quote.'}</p>
               </div>
               <div className="dash-coins">
                 {live ? live.map((quote, index) => (
-                  <Coin key={quote.purity} purity={quote.purity} figure={figure(quote.cents)} size={index === 1 ? '168px' : '124px'} delay={`${index * -1.4}s`} back={board?.source ?? 'Market board'} />
+                  <Coin key={quote.purity} purity={quote.purity} cents={quote.cents} figure={figure(quote.cents)} size={index === 1 ? '168px' : '124px'} delay={`${index * -1.4}s`} back={board?.source ?? 'Market board'} />
                 )) : approved ? (
-                  <Coin purity="22K" figure={figure(approved.cents)} size="180px" delay="-2s" back={approved.source} />
+                  <Coin purity="22K" cents={approved.cents} figure={figure(approved.cents)} size="180px" delay="-2s" back={approved.source} />
                 ) : <p className="dash-note">No approved selling rate. Nothing can be sold at zero.</p>}
               </div>
             </article>
           ) : null}
           {seeSales ? (
-            <article className="dash-card dash-sales">
+            <article className="dash-card dash-sales dash-reveal" style={{ '--rd': '80ms' } as CSSProperties}>
               <div className="dash-row"><h2>Sales</h2></div>
-              <p className="dash-big dash-dp">{money(sales)}</p>
+              <p className="dash-big"><CountUp to={sales} kind="lkr" /></p>
               <p className="dash-mute">{completed.length} completed {completed.length === 1 ? 'invoice' : 'invoices'}</p>
               <Spark values={completed.map((invoice) => invoice.totalCents)} />
             </article>
           ) : null}
-          <article className="dash-card dash-stock">
-            <div className="dash-row"><h2>Gold in stock</h2><span className="dash-mute">Total <b>{stockGrams.toFixed(1)} g</b> · {available.length} pieces</span></div>
+          <article className="dash-card dash-stock dash-reveal" style={{ '--rd': '160ms' } as CSSProperties}>
+            <div className="dash-row"><h2>Gold in stock</h2><span className="dash-mute">Total <b><CountUp to={stockGrams} kind="grams" /></b> · {available.length} pieces</span></div>
             <ul className="dash-vault">
               {purities.map((purity, index) => (
-                <li key={purity} className="dash-vault-row dash-dp">
+                <li key={purity} className="dash-vault-row">
                   <span className="dash-seal" aria-hidden="true"><GemMark /></span>
                   <span>
                     <b>{purity}</b>
                     <span className="dash-mute">{purityLabel[purity]} · {counts[index]} {counts[index] === 1 ? 'piece' : 'pieces'}</span>
                     <span className="dash-share"><i style={{ '--p': stockGrams ? (grams[index] ?? 0) / stockGrams : 0 } as CSSProperties} /></span>
                   </span>
-                  <strong>{(grams[index] ?? 0).toFixed(1)} g</strong>
+                  <strong><CountUp to={grams[index] ?? 0} kind="grams" /></strong>
                 </li>
               ))}
             </ul>
           </article>
-          <article className="dash-card dash-attn">
+          <article className="dash-card dash-attn dash-reveal" style={{ '--rd': '240ms' } as CSSProperties}>
             <h2>Needs attention</h2>
             {notes.length === 0 ? <p className="dash-mute">Nothing is waiting.</p> : notes.map((note) => (
               <Link key={`${note.to}-${note.title}`} className="dash-pl" style={{ '--c': note.color } as CSSProperties} to={note.to}>
@@ -137,41 +192,118 @@ function GemMark() {
   )
 }
 
-function Coin({ purity, figure, size, delay, back }: { purity: string; figure: string; size: string; delay: string; back: string }) {
+function Coin({ purity, cents, figure, size, delay, back }: { purity: string; cents: number; figure: string; size: string; delay: string; back: string }) {
   const [flip, setFlip] = useState(false)
   return (
     <button type="button" className={`dash-coin ${flip ? 'flip' : ''}`} style={{ '--sz': size, '--dl': delay } as CSSProperties} aria-label={`${purity} ${figure} LKR per gram`} onClick={() => setFlip((open) => !open)}>
-      <span className="dash-cf">
-        <span className="dash-face dash-front">
-          <small>{purity} · {purityLabel[purity]}</small>
-          <b>{figure}</b>
-          <small>LKR / g</small>
-        </span>
-        <span className="dash-face dash-back">
-          <small>{purity}</small>
-          <b>{back}</b>
+      <span className="dash-float">
+        <span className="dash-cf">
+          <span className="dash-face dash-front">
+            <small>{purity} · {purityLabel[purity]}</small>
+            <b><CountUp to={cents} kind="rate" /></b>
+            <small>LKR / g</small>
+          </span>
+          <span className="dash-face dash-back">
+            <small>{purity}</small>
+            <b>{back}</b>
+          </span>
         </span>
       </span>
+      <i className="dash-shadow" aria-hidden="true" />
     </button>
   )
 }
 
 function Spark({ values }: { values: number[] }) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const tipRef = useRef<HTMLParagraphElement>(null)
   if (values.length < 2) return null
   const max = Math.max(...values)
   const min = Math.min(...values)
   const span = Math.max(max - min, 1)
-  const line = values.map((value, index) => {
+  const points = values.map((value, index) => {
     const x = (index / (values.length - 1)) * 300
     const y = 92 - ((value - min) / span) * 70
-    return `${index ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`
-  }).join(' ')
+    return { x, y, value }
+  })
+  const line = points.map((point, index) => `${index ? 'L' : 'M'}${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ')
+  const onMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    const svg = svgRef.current
+    const tip = tipRef.current
+    if (!svg || !tip) return
+    const rect = svg.getBoundingClientRect()
+    const x = ((event.clientX - rect.left) / rect.width) * 300
+    let nearest = points[0]
+    for (const point of points) {
+      if (nearest && Math.abs(point.x - x) < Math.abs(nearest.x - x)) nearest = point
+    }
+    if (!nearest) return
+    const guide = svg.querySelector('.dash-guide')
+    const dot = svg.querySelector('.dash-dot')
+    guide?.setAttribute('x1', nearest.x.toFixed(1))
+    guide?.setAttribute('x2', nearest.x.toFixed(1))
+    dot?.setAttribute('cx', nearest.x.toFixed(1))
+    dot?.setAttribute('cy', nearest.y.toFixed(1))
+    svg.dataset.hot = 'true'
+    tip.textContent = money(nearest.value)
+    tip.style.left = `${(nearest.x / 300) * 100}%`
+  }
   return (
-    <svg viewBox="0 0 300 110" className="dash-spark" aria-hidden="true">
-      <path d={`${line} L300 110 L0 110 Z`} fill="rgba(201,162,77,.35)" />
-      <path d={line} fill="none" stroke="#8A6A24" strokeWidth="3" strokeLinecap="round" />
-    </svg>
+    <div className="dash-plot" onPointerLeave={() => { if (svgRef.current) delete svgRef.current.dataset.hot }}>
+      <svg ref={svgRef} viewBox="0 0 300 110" className="dash-spark" role="img" aria-label="Completed sales" onPointerMove={onMove}>
+        <g className="dash-area"><path d={`${line} L300 110 L0 110 Z`} /></g>
+        <path className="dash-line" d={line} fill="none" stroke="#8A6A24" strokeWidth="3" strokeLinecap="round" />
+        <line className="dash-guide" x1="0" x2="0" y1="8" y2="102" />
+        <circle className="dash-dot" r="5" cx="0" cy="0" />
+      </svg>
+      <p ref={tipRef} className="dash-tip" />
+    </div>
   )
+}
+
+function CountUp({ to, kind }: { to: number; kind: 'lkr' | 'grams' | 'rate' }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    const paint = (value: number) => {
+      node.textContent = kind === 'lkr' ? money(Math.round(value)) : kind === 'grams' ? `${value.toFixed(1)} g` : figure(Math.round(value) as Cents)
+    }
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.effects === 'off'
+    if (reduce) {
+      paint(to)
+      return
+    }
+    let frame = 0
+    let start = 0
+    let begun = false
+    const tick = (now: number) => {
+      if (!start) start = now
+      const t = Math.min(1, (now - start) / 900)
+      const eased = 1 - (1 - t) ** 3
+      paint(to * eased)
+      if (t < 1) frame = requestAnimationFrame(tick)
+    }
+    const begin = () => {
+      if (begun) return
+      begun = true
+      frame = requestAnimationFrame(tick)
+    }
+    const rect = node.getBoundingClientRect()
+    const seen = rect.height > 0 && rect.top < window.innerHeight && rect.bottom > 0
+    const watcher = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return
+      watcher.disconnect()
+      begin()
+    })
+    if (seen) begin()
+    else watcher.observe(node)
+    return () => {
+      cancelAnimationFrame(frame)
+      watcher.disconnect()
+    }
+  }, [to, kind])
+  return <span ref={ref}>{kind === 'grams' ? '0.0 g' : kind === 'lkr' ? money(0) : figure(0 as Cents)}</span>
 }
 
 function figure(cents: Cents) {
