@@ -808,7 +808,7 @@ html[data-theme='sand-stone'] aside.desk-hero {
 .brand-mark svg {
   position: relative;
   transform-origin: center;
-  animation: gate-yaw 4s linear infinite;
+  animation: gate-yaw 30s linear infinite;
 }
 
 .brand-mark::after {
@@ -883,7 +883,7 @@ html[data-theme='sand-stone'] aside.desk-hero {
 .erp-link .nav-ico-products,
 .erp-link .nav-ico-returns,
 .erp-link .nav-ico-settings {
-  animation: nav-spin 3.6s linear infinite;
+  animation: nav-spin 16s linear infinite;
 }
 
 .erp-link .nav-ico-purchases,
@@ -1012,29 +1012,6 @@ html[data-theme='sand-stone'] aside.desk-hero {
 .desk-bell:hover svg { animation: bell-shake 0.5s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .desk-badge { animation: dash-pulse 1.5s ease-out infinite; }
 @keyframes bell-shake { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(12deg); } 55% { transform: rotate(-10deg); } 80% { transform: rotate(6deg); } }
-
-.desk-cursor {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 80;
-  width: 28px;
-  height: 28px;
-  margin: -14px 0 0 -14px;
-  border: 1.5px solid #c6a56b;
-  border-radius: 999px;
-  box-shadow: 0 0 0 7px rgba(15, 118, 110, 0.14), 0 0 24px rgba(198, 165, 107, 0.45);
-  pointer-events: none;
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  pointer-events: none;
-  background: radial-gradient(160px circle at var(--cx, -200px) var(--cy, -200px), rgba(198, 165, 107, 0.2), transparent 62%);
-}
 
 .hover-surface {
   position: relative;
@@ -1177,11 +1154,6 @@ tbody tr {
     transform: none;
   }
 
-  .desk-cursor,
-  body::after {
-    display: none;
-  }
-
   .dash-share i { width: calc(var(--p) * 100%); transition: none; }
   .nav-ico,
   .nav-bar,
@@ -1238,9 +1210,7 @@ html[data-effects='off'] .lux-card:hover {
 }
 
 html[data-effects='off'] .hover-surface::before,
-html[data-effects='off'] .btn-accent::after,
-html[data-effects='off'] .desk-cursor,
-html[data-effects='off'] body::after {
+html[data-effects='off'] .btn-accent::after {
   display: none;
 }
 
@@ -1446,8 +1416,6 @@ html[data-effects='off'] .perf-row:hover {
 @media print {
   .receipt-80 { width: 80mm; }
   .receipt-a4 { width: 210mm; }
-  .desk-cursor,
-  body::after { display: none !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1567,7 +1535,7 @@ html[data-effects='off'] .brand-name {
   position: absolute;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--accent-500) 55%, transparent);
-  animation: gate-yaw 14s linear infinite;
+  animation: gate-yaw 36s linear infinite;
 }
 
 .gate-ring i {
@@ -1591,14 +1559,14 @@ html[data-effects='off'] .brand-name {
   pointer-events: none;
 }
 
-.gate-ring-a { inset: 0; animation-duration: 8s; }
+.gate-ring-a { inset: 0; animation-duration: 36s; }
 .gate-ring-b {
   inset: 22px;
   border-style: dashed;
-  animation-duration: 5s;
+  animation-duration: 48s;
   animation-direction: reverse;
 }
-.gate-ring-c { inset: 46px; animation-duration: 3.2s; }
+.gate-ring-c { inset: 46px; animation-duration: 28s; }
 
 .gate-core {
   position: absolute;
@@ -1622,7 +1590,7 @@ html[data-effects='off'] .brand-name {
   width: 78px;
   height: 78px;
   transform-origin: center;
-  animation: gate-yaw 4s linear infinite;
+  animation: gate-yaw 30s linear infinite;
 }
 
 .gate-word {

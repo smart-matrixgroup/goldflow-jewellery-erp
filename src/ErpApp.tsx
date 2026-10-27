@@ -92,14 +92,14 @@ export function ErpApp() {
     const tick = (now: number) => {
       const turn = now / 1000
       document.querySelectorAll<HTMLElement>('.gate-ring').forEach((ring, index) => {
-        const speed = index === 1 ? -110 : 70 + index * 45
+        const speed = index === 1 ? -8 : 10 + index * 4
         ring.style.transform = `rotate(${turn * speed}deg)`
       })
       document.querySelectorAll<HTMLElement>('.gate-sweep, .brand-orbit').forEach((node) => {
-        node.style.transform = `rotate(${turn * 160}deg)`
+        node.style.transform = `rotate(${turn * 8}deg)`
       })
       document.querySelectorAll<HTMLElement>('.gate-gem, .brand-mark svg').forEach((node) => {
-        node.style.transform = `rotate(${turn * 90}deg)`
+        node.style.transform = `rotate(${turn * 12}deg)`
       })
       frame = requestAnimationFrame(tick)
     }

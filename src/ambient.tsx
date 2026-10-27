@@ -1,40 +1,5 @@
 import { useEffect, useRef } from 'react'
 
-export function CursorGlow() {
-  const ring = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const node = ring.current
-    if (!node) return
-    let x = -200
-    let y = -200
-    let cx = -200
-    let cy = -200
-    let frame = 0
-    const root = document.documentElement
-    const tick = () => {
-      cx += (x - cx) * 0.22
-      cy += (y - cy) * 0.22
-      node.style.transform = `translate3d(${cx}px, ${cy}px, 0)`
-      root.style.setProperty('--cx', `${cx}px`)
-      root.style.setProperty('--cy', `${cy}px`)
-      frame = requestAnimationFrame(tick)
-    }
-    const onMove = (event: PointerEvent) => {
-      x = event.clientX
-      y = event.clientY
-    }
-    frame = requestAnimationFrame(tick)
-    window.addEventListener('pointermove', onMove)
-    return () => {
-      cancelAnimationFrame(frame)
-      window.removeEventListener('pointermove', onMove)
-    }
-  }, [])
-
-  return <div ref={ring} className="desk-cursor" aria-hidden="true" />
-}
-
 export function useHoverLight() {
   useEffect(() => {
     const onMove = (event: PointerEvent) => {
