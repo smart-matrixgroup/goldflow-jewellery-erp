@@ -306,14 +306,16 @@ export function JewelField() {
       }
     }
 
+    const paintGems = (now: number) => {
+      ctx.clearRect(0, 0, width, height)
+      for (const piece of gems) gem(piece, now)
+    }
+
     size()
     const quiet = motion.matches || document.documentElement.dataset.effects === 'off'
     seed(quiet ? 0 : width < 700 ? 20 : 42)
-    if (quiet) {
-      for (const piece of gems) gem(piece, 0)
-    } else {
-      frame = requestAnimationFrame(draw)
-    }
+    paintGems(0)
+    if (!quiet) frame = requestAnimationFrame(draw)
     window.addEventListener('resize', onResize)
     if (!quiet && fine.matches) window.addEventListener('pointermove', onMove)
     return () => {
