@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GoldFlow Jewellery ERP</title>
+    <script>
+      (function () {
+        try {
+          var session = sessionStorage.getItem('goldflow.erp.session') || ''
+          var user = session ? localStorage.getItem('goldflow.erp.theme.user.' + session) : null
+          var raw = user || localStorage.getItem('goldflow.erp.theme.tenant')
+          var theme = raw ? JSON.parse(raw) : null
+          var preset = theme && theme.preset === 'pearl-fresh' ? 'sand-stone' : theme && theme.preset
+          if (preset !== 'sand-stone' && preset !== 'sage-mist' && preset !== 'mist-blue' && preset !== 'midnight-sapphire' && preset !== 'obsidian-gold') preset = 'sand-stone'
+          var mode = theme && theme.mode ? theme.mode : 'light'
+          if (mode === 'system') mode = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+          if (mode !== 'dark' && mode !== 'light') mode = 'light'
+          var dim = 4
+          if (theme && (theme.comfortLevel === 0 || theme.comfortLevel === 4 || theme.comfortLevel === 8)) dim = theme.comfortLevel
+          else if (theme && theme.comfort === true) dim = 8
+          var root = document.documentElement
+          root.dataset.theme = preset
+          root.dataset.mode = mode
+          root.style.setProperty('--dim', String(dim))
+          if (theme && theme.reduceEffects) root.dataset.effects = 'off'
+          var accent = theme && theme.accent
+          if (!accent) return
+          root.style.setProperty('--accent-200', accent['200'])
+          root.style.setProperty('--accent-300', accent['300'])
+          root.style.setProperty('--accent-400', accent['400'])
+          root.style.setProperty('--accent-500', accent['500'])
+          root.style.setProperty('--accent-600', accent['600'])
+          root.style.setProperty('--accent-gradient', accent.gradient)
+          root.style.setProperty('--on-accent', accent.on)
+        } catch (error) {
+          document.documentElement.dataset.theme = 'sand-stone'
+          document.documentElement.dataset.mode = 'light'
+          document.documentElement.style.setProperty('--dim', '4')
+        }
+      })()
+    </script>
+    <style>html{color:#26211a;background:#e3dfd4}html[data-theme=sage-mist]{color:#1f2622;background:#d7ddd6}html[data-theme=mist-blue]{color:#1c222a;background:#d6dce2}html[data-theme=midnight-sapphire][data-mode=dark]{color:#eaf0fa;background:#050912}html[data-theme=obsidian-gold][data-mode=dark]{color:#f3eee4;background:#06070a}html[data-theme=midnight-sapphire][data-mode=light]{color:#10192b;background:#e3eaf4}html[data-theme=obsidian-gold][data-mode=light]{color:#17140f;background:#e8e0d4}</style>
+    <script type="module" crossorigin src="/assets/index-CjUTR3se.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-D0IK03Sp.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
