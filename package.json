@@ -15,6 +15,8 @@
     "@goldflow/ui-tokens": "*",
     "@tanstack/react-query": "^5.105.0",
     "decimal.js": "^10.6.0",
+    "framer-motion": "^14.7.1",
+    "lucide-react": "^1.63.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.4",
