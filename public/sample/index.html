@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GoldFlow sample prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --ink: #14181f; --muted: #3d4654; --gold: #8a6420; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); font-family: Outfit, "Segoe UI", sans-serif; background: #c9d5e0; }
+    button { font-family: inherit; }
+    .stage { min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; padding: 14px 16px 16px; }
+    .top, .bottom { width: min(1180px, 100%); margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .mark { font-family: Fraunces, Georgia, serif; font-size: 22px; }
+    .mark i { color: var(--gold); font-style: normal; }
+    .count { font-weight: 700; font-size: 13px; }
+    .board { width: min(1180px, 100%); margin: 10px auto; }
+    .frame { display: none; }
+    .frame.on { display: grid; gap: 10px; }
+    .kicker { margin: 0; color: #0c6b58; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    h1 { margin: 0; font-family: Fraunces, Georgia, serif; font-weight: 560; font-size: clamp(28px, 3vw, 40px); letter-spacing: -0.03em; }
+    .lead { margin: 0; color: var(--muted); font-size: 16px; }
+    .shot { position: relative; border-radius: 18px; overflow: hidden; background: #d5e0ea; }
+    .shot img { display: block; width: 100%; height: auto; }
+    .call { position: absolute; display: flex; align-items: center; max-width: 34%; z-index: 2; }
+    .call .text {
+      background: #fff;
+      border-radius: 12px;
+      padding: 7px 10px;
+      font-size: 13px;
+      line-height: 1.3;
+    }
+    .call .text b { display: block; }
+    .call .text span { color: var(--muted); font-weight: 500; }
+    .shaft {
+      flex: none;
+      width: 78px;
+      height: 3px;
+      margin-left: 0;
+      background: var(--gold);
+      position: relative;
+      transform-origin: left center;
+      animation: grow 1.15s ease-in-out infinite;
+    }
+    .shaft::after {
+      content: "";
+      position: absolute;
+      right: -7px;
+      top: -5px;
+      border-width: 6px 0 6px 9px;
+      border-style: solid;
+      border-color: transparent transparent transparent var(--gold);
+    }
+    .call.flip { flex-direction: row-reverse; }
+    .call.flip .shaft { transform-origin: right center; }
+    .call.flip .shaft::after {
+      right: auto;
+      left: -7px;
+      border-width: 6px 9px 6px 0;
+      border-color: transparent var(--gold) transparent transparent;
+    }
+    .call:nth-child(2) .shaft { animation-delay: 0.12s; }
+    .call:nth-child(3) .shaft { animation-delay: 0.24s; }
+    .call:nth-child(4) .shaft { animation-delay: 0.36s; }
+    .call:nth-child(5) .shaft { animation-delay: 0.48s; }
+    @keyframes grow {
+      0%, 100% { transform: scaleX(0.35); }
+      50% { transform: scaleX(1); }
+    }
+    .navbtn { border: 0; border-radius: 999px; padding: 11px 16px; background: var(--ink); color: white; font-weight: 700; cursor: pointer; }
+    .navbtn.ghost { background: transparent; color: var(--ink); }
+    .dots { display: flex; gap: 6px; }
+    .dots button { width: 9px; height: 9px; border: 0; border-radius: 99px; padding: 0; background: rgba(20, 24, 31, 0.28); cursor: pointer; }
+    .dots button.on { width: 22px; background: var(--ink); }
+    @media (max-width: 800px) {
+      .call { max-width: 70%; }
+      .call .text span { display: none; }
+      .shaft { width: 42px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .shaft { animation: none; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <header class="top">
+      <div class="mark">Gold<i>Flow</i></div>
+      <div class="count" id="count"></div>
+    </header>
+    <main class="board" id="board"></main>
+    <footer class="bottom">
+      <button class="navbtn ghost" type="button" id="prev">← Back</button>
+      <div class="dots" id="dots"></div>
+      <button class="navbtn" type="button" id="next">Next →</button>
+    </footer>
+  </div>
+  <script>
+    const pages = [
+      {
+        kicker: "Real desk · Dashboard",
+        title: "The home screen",
+        lead: "A normal ERP counts boxes and stores one price. These arrows sit on the actual dashboard and name what a jewellery desk keeps instead.",
+        image: "shots/dashboard.png",
+        arrows: [
+          { top: "36%", left: "20%", title: "Gold rates", text: "Market coins. The till sells on the approved shop rate." },
+          { top: "24%", left: "73%", title: "Sales", text: "Completed bills only." },
+          { top: "56%", left: "34%", flip: true, title: "Quick actions", text: "Sale, old gold, repair, stock, rate." },
+          { top: "78%", left: "20%", title: "Gold in stock", text: "Weight and pieces by purity." },
+          { top: "76%", left: "62%", title: "Needs attention", text: "Repairs and approvals waiting." }
+        ]
+      },
+      {
+        kicker: "Real desk · Gold rates",
+        title: "The rate is filed, then approved",
+        lead: "A normal ERP has one price field. Here the selling rate, the buying rate, and a market reference stay separate.",
+        image: "shots/rates.png",
+        arrows: [
+          { top: "27%", left: "20%", title: "Purity board", text: "24K, 22K, and 18K are shown per gram. This board is not the bill by itself." },
+          { top: "44%", left: "20%", title: "File a rate", text: "A quote waits for approval before the till uses it." },
+          { top: "62%", left: "20%", title: "History", text: "Purity, type, source, and the time stay on the record. An old bill is not rewritten." }
+        ]
+      },
+      {
+        kicker: "Real desk · Jewellery master",
+        title: "One tag is one piece",
+        lead: "A normal product row is a quantity. Here every piece has its own tag, weight, purity, making charge, stones, and cost.",
+        image: "shots/products.png",
+        arrows: [
+          { top: "34%", left: "20%", title: "Add a piece", text: "Tag, name, category, purity, gross, stone, and net weight." },
+          { top: "46%", left: "58%", flip: true, title: "Add piece", text: "The till prices from these making, stone, and discount figures." },
+          { top: "72%", left: "20%", title: "Showroom tags", text: "Each row is one piece, with its own status and cost." }
+        ]
+      },
+      {
+        kicker: "Real desk · Till",
+        title: "The bill follows the tag",
+        lead: "A normal checkout sells a quantity. Here the cashier picks the actual piece, then takes the payment on that bill.",
+        image: "shots/pos.png",
+        arrows: [
+          { top: "8%", left: "28%", title: "Four steps", text: "Items, confirm, payment, then the bill." },
+          { top: "22%", left: "4%", title: "The piece", text: "Scan a tag or tap the photo. Weight, purity, and amount come with it." },
+          { top: "18%", left: "64%", title: "This bill", text: "Customer, lines, and the total. A walk-in can still be billed." }
+        ]
+      },
+      {
+        kicker: "Real desk · Stock",
+        title: "Stock moves. It is not typed over.",
+        lead: "A normal ERP lets someone edit the quantity. Here a count waits for approval, and a branch transfer has a send and a receive.",
+        image: "shots/inventory.png",
+        arrows: [
+          { top: "36%", left: "20%", title: "Count", text: "Propose the difference. Another role approves it." },
+          { top: "34%", left: "56%", title: "Branch", text: "Dispatch names the tag and the destination." },
+          { top: "70%", left: "20%", title: "Movements", text: "Sale and return stay as separate lines. The balance is not overwritten." }
+        ]
+      },
+      {
+        kicker: "Real desk · Repairs",
+        title: "The piece belongs to the customer",
+        lead: "A normal ERP sells a service product. Here the job keeps the item, the dates, the estimate, and the advance.",
+        image: "shots/repairs.png",
+        arrows: [
+          { top: "36%", left: "20%", title: "Job card", text: "Customer, item, received date, delivery date, and estimate." },
+          { top: "36%", left: "62%", flip: true, title: "Open job", text: "Opening the card starts the custody record." },
+          { top: "58%", left: "22%", title: "Advance", text: "Collection deducts the advance and closes the job." }
+        ]
+      },
+      {
+        kicker: "Real desk · Old gold",
+        title: "Old gold is a credit, not a discount",
+        lead: "A normal ERP would subtract a discount. Here weight, purity, and the buying rate become a credit used once on the next bill.",
+        image: "shots/old-gold.png",
+        arrows: [
+          { top: "40%", left: "20%", title: "Assessment", text: "Customer, purity, grams, buying rate, and any deduction." },
+          { top: "42%", left: "58%", flip: true, title: "Credit", text: "The amount is stored on its own. It is not a cash receipt." },
+          { top: "64%", left: "20%", title: "Intakes", text: "Each line keeps weight, purity, and the credit." }
+        ]
+      }
+    ]
+
+    const board = document.querySelector("#board")
+    const dots = document.querySelector("#dots")
+    const count = document.querySelector("#count")
+    let index = 0
+
+    function shaft() {
+      return `<i class="shaft"></i>`
+    }
+
+    function paint(page) {
+      const section = document.createElement("section")
+      section.className = "frame"
+      const arrows = page.arrows.map((arrow) => `
+        <div class="call ${arrow.flip ? "flip" : ""}" style="top:${arrow.top};left:${arrow.left}">
+          <div class="text"><b>${arrow.title}</b><span>${arrow.text}</span></div>
+          ${shaft()}
+        </div>`).join("")
+      section.innerHTML = `
+        <p class="kicker">${page.kicker}</p>
+        <h1>${page.title}</h1>
+        <p class="lead">${page.lead}</p>
+        <div class="shot">
+          <img src="${page.image}" alt="${page.title}" />
+          ${arrows}
+        </div>`
+      return section
+    }
+
+    pages.forEach((_, pageIndex) => {
+      const dot = document.createElement("button")
+      dot.type = "button"
+      dot.setAttribute("aria-label", `Screen ${pageIndex + 1}`)
+      dot.addEventListener("click", () => show(pageIndex))
+      dots.appendChild(dot)
+    })
+
+    function show(next) {
+      index = (next + pages.length) % pages.length
+      board.replaceChildren(paint(pages[index]))
+      board.firstElementChild.classList.add("on")
+      dots.querySelectorAll("button").forEach((dot, dotIndex) => dot.classList.toggle("on", dotIndex === index))
+      count.textContent = `${index + 1} / ${pages.length}`
+      document.querySelector("#next").textContent = index === pages.length - 1 ? "First screen" : "Next →"
+    }
+
+    document.querySelector("#next").addEventListener("click", () => show(index + 1))
+    document.querySelector("#prev").addEventListener("click", () => show(index - 1))
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight") show(index + 1)
+      if (event.key === "ArrowLeft") show(index - 1)
+    })
+    show(0)
+  </script>
+</body>
+</html>

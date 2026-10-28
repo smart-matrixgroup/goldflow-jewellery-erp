@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
     ...loadEnv(mode, fileURLToPath(new URL('../..', import.meta.url)), ''),
   }
   return {
-  plugins: [react(), tailwindcss(), spaFallback()],
+  plugins: [react(), tailwindcss(), sampleEntry(), spaFallback()],
   server: {
     port: 5175,
     proxy: {
@@ -53,6 +53,24 @@ export default defineConfig(({ mode }) => {
   },
 }
 })
+
+function sampleEntry() {
+  return {
+    name: 'sample-entry',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = req.url?.split('?')[0]
+        if (path === '/sample' || path === '/sample/') {
+          res.statusCode = 302
+          res.setHeader('Location', '/sample/index.html')
+          res.end()
+          return
+        }
+        next()
+      })
+    },
+  }
+}
 
 function spaFallback() {
   return {

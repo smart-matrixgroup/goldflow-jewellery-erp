@@ -87,7 +87,8 @@ async function readJson(response: Response): Promise<unknown> {
 }
 
 async function fromGoldApi(apiKey: string, fetchedAt: string): Promise<LiveBoard | null> {
-  const headers: Record<string, string> = { Accept: 'application/json', 'x-gold-key': apiKey.trim() }
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  if (apiKey.trim()) headers['x-gold-key'] = apiKey.trim()
   const response = await fetch('/api/gold/price/XAU/LKR', { headers, signal: AbortSignal.timeout(8000) })
   if (!response.ok) return null
   return parseGoldApiPayload(await readJson(response), fetchedAt)
@@ -109,18 +110,15 @@ async function fromPublicSpot(fetchedAt: string): Promise<LiveBoard | null> {
 
 export async function fetchLiveBoard(apiKey: string): Promise<LiveBoard> {
   const fetchedAt = new Date().toISOString()
-  const keyed = apiKey.trim().length > 0
-  if (keyed) {
-    try {
-      const direct = await fromGoldApi(apiKey, fetchedAt)
-      if (direct) return direct
-    } catch {
-      // GoldAPI.io did not answer. The public spot rate is the fallback.
-    }
+  try {
+    const direct = await fromGoldApi(apiKey, fetchedAt)
+    if (direct) return direct
+  } catch {
+    // GoldAPI.io did not answer. The public spot rate is the fallback.
   }
   const spot = await fromPublicSpot(fetchedAt).catch(() => null)
   if (!spot) {
-    throw new Error(keyed ? 'GoldAPI.io did not return a rate, and the public spot rate is unavailable. The approved shop rate is unchanged.' : 'Live rates are unavailable. The approved shop rate is unchanged.')
+    throw new Error('GoldAPI.io did not return a rate, and the public spot rate is unavailable. The approved shop rate is unchanged.')
   }
   return spot
 }
