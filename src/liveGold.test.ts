@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { lkrToCents } from '@goldflow/shared'
-import { parseGoldApiPayload, quotesFromSpot } from './liveGold.ts'
+import { parseGoldApiPayload, quotesFromSpot, usdPerOunce } from './liveGold.ts'
 
 describe('live gold rates', () => {
   it('reads karat gram prices from a GoldAPI payload', () => {
@@ -21,6 +21,11 @@ describe('live gold rates', () => {
     expect(parseGoldApiPayload({ melt_price_per_gram: { '24k': 0, '22k': 10, '18k': 8 } }, '2026-10-26T00:00:00Z')).toBeNull()
     expect(parseGoldApiPayload({ price: 0 }, '2026-10-26T00:00:00Z')).toBeNull()
     expect(quotesFromSpot(0, 300, '2026-10-26T00:00:00Z')).toBeNull()
+  })
+
+  it('reads a public ounce price', () => {
+    expect(usdPerOunce({ symbol: 'XAU', price: 4048.8 })).toBe(4048.8)
+    expect(usdPerOunce({ symbol: 'XAU', price: 0 })).toBeNull()
   })
 
   it('turns a spot ounce into 24K, 22K and 18K gram rates', () => {

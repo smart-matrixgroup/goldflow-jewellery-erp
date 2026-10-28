@@ -10,9 +10,11 @@ applyChoice(readChoice(sessionAccount()))
 const root = document.getElementById('root')
 if (!root) throw new Error('Root missing')
 
+const baseName = import.meta.env.BASE_URL.replace(/\/$/, '')
+
 createRoot(root).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={baseName || undefined}>
       <ErpApp />
     </BrowserRouter>
   </StrictMode>,

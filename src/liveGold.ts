@@ -82,39 +82,52 @@ function usdFromSwissquote(body: unknown): number | null {
   return bid ?? ask
 }
 
+export function usdPerOunce(body: unknown): number | null {
+  const record = asRecord(body)
+  if (record?.symbol === 'XAU') {
+    const price = positive(record.price)
+    if (price) return price
+  }
+  return usdFromSwissquote(body)
+}
+
 async function readJson(response: Response): Promise<unknown> {
   return response.json() as Promise<unknown>
 }
 
 async function fromGoldApi(apiKey: string, fetchedAt: string): Promise<LiveBoard | null> {
   const headers: Record<string, string> = { Accept: 'application/json' }
-  if (apiKey.trim()) headers['x-gold-key'] = apiKey.trim()
-  const response = await fetch('/api/gold/price/XAU/LKR', { headers, signal: AbortSignal.timeout(20000) })
+  const onDesk = import.meta.env.DEV
+  if (apiKey.trim()) headers[onDesk ? 'x-gold-key' : 'x-access-token'] = apiKey.trim()
+  const response = await fetch(onDesk ? '/api/gold/price/XAU/LKR' : 'https://www.goldapi.io/api/price/XAU/LKR', { headers, signal: AbortSignal.timeout(20000) })
   if (!response.ok) return null
   return parseGoldApiPayload(await readJson(response), fetchedAt)
 }
 
 async function fromPublicSpot(fetchedAt: string): Promise<LiveBoard | null> {
+  const onDesk = import.meta.env.DEV
   const [spotResponse, fxResponse] = await Promise.all([
-    fetch('/api/spot/public-quotes/bboquotes/instrument/XAU/USD', { signal: AbortSignal.timeout(20000) }),
-    fetch('/api/fx/v6/latest/USD', { signal: AbortSignal.timeout(20000) }),
+    fetch(onDesk ? '/api/spot/public-quotes/bboquotes/instrument/XAU/USD' : 'https://api.gold-api.com/price/XAU', { signal: AbortSignal.timeout(20000) }),
+    fetch(onDesk ? '/api/fx/v6/latest/USD' : 'https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(20000) }),
   ])
   if (!spotResponse.ok || !fxResponse.ok) return null
-  const usd = usdFromSwissquote(await readJson(spotResponse))
+  const usd = usdPerOunce(await readJson(spotResponse))
   const fx = asRecord(await readJson(fxResponse))
   const rates = asRecord(fx?.rates)
   const lkr = positive(rates?.LKR)
   if (!usd || !lkr) return null
-  return quotesFromSpot(usd, lkr, fetchedAt, 'Swissquote XAU/USD × LKR')
+  return quotesFromSpot(usd, lkr, fetchedAt, onDesk ? 'Swissquote XAU/USD × LKR' : 'Gold spot × LKR')
 }
 
 export async function fetchLiveBoard(apiKey: string): Promise<LiveBoard> {
   const fetchedAt = new Date().toISOString()
-  try {
-    const direct = await fromGoldApi(apiKey, fetchedAt)
-    if (direct) return direct
-  } catch {
-    // GoldAPI.io did not answer. The public spot rate is the fallback.
+  if (import.meta.env.DEV || apiKey.trim()) {
+    try {
+      const direct = await fromGoldApi(apiKey, fetchedAt)
+      if (direct) return direct
+    } catch {
+      // GoldAPI.io did not answer. The public spot rate is the fallback.
+    }
   }
   const spot = await fromPublicSpot(fetchedAt).catch(() => null)
   if (!spot) {
