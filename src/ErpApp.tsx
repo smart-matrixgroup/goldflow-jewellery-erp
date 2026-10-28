@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { moduleOpen, visibleModules } from './access.ts'
 import { loadBooks, saveBooks } from './books.ts'
@@ -153,35 +153,31 @@ export function ErpApp() {
     return () => media.removeEventListener('change', onChange)
   }, [desk.accountId])
 
-  const reload = useCallback(async () => {
-    try {
-      const next = await fetchLiveBoard(apiKey)
-      setBoard(next)
-      setProblem(next.warning)
-    } catch (caught) {
-      setProblem(caught instanceof Error ? caught.message : 'Live rates are unavailable. The approved shop rate is unchanged.')
-    }
-  }, [apiKey])
-
   useEffect(() => {
     let cancel = false
-    void (async () => {
+    let timer = 0
+    let misses = 0
+    const load = async () => {
       try {
         const next = await fetchLiveBoard(apiKey)
-        if (!cancel) {
-          setBoard(next)
-          setProblem(next.warning)
-        }
+        if (cancel) return
+        misses = 0
+        setBoard(next)
+        setProblem(next.warning)
+        timer = window.setTimeout(() => void load(), 60_000)
       } catch (caught) {
-        if (!cancel) setProblem(caught instanceof Error ? caught.message : 'Live rates are unavailable. The approved shop rate is unchanged.')
+        if (cancel) return
+        misses += 1
+        setProblem(caught instanceof Error ? caught.message : 'Live rates are unavailable. The approved shop rate is unchanged.')
+        timer = window.setTimeout(() => void load(), misses < 3 ? 5_000 : 60_000)
       }
-    })()
-    const timer = window.setInterval(() => void reload(), 60_000)
+    }
+    void load()
     return () => {
       cancel = true
-      window.clearInterval(timer)
+      window.clearTimeout(timer)
     }
-  }, [apiKey, reload])
+  }, [apiKey])
 
   const run: Run = (action) => {
     setError(null)

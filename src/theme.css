@@ -1270,7 +1270,7 @@ html[data-effects='off'] .perf-row:hover {
 .dash-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .dash-mute { color: var(--text-2); font-size: 13px; }
 .dash-big { margin: 10px 0 2px; font-family: var(--font-serif, Georgia, serif); font-size: clamp(28px, 3vw, 38px); font-weight: 500; line-height: 1.05; color: var(--text-1); }
-.dash-stage { grid-column: span 8; color: #eaf6f2; border-radius: 56px 20px 130px 20px; background: radial-gradient(120% 90% at 20% 0%, #1b6a5b, #0f3b34 60%, #0b2a25); border-color: rgba(240, 221, 181, 0.35); display: grid; grid-template-columns: minmax(170px, 240px) 1fr; gap: 12px; padding: 26px 26px 36px; }
+.dash-stage { grid-column: span 8; color: #eaf6f2; border-radius: 56px 20px 130px 20px; background: radial-gradient(120% 90% at 20% 0%, #1b6a5b, #0f3b34 60%, #0b2a25); border-color: rgba(240, 221, 181, 0.35); display: grid; grid-template-columns: minmax(150px, 220px) minmax(0, 1fr); gap: 12px; padding: 26px 26px 36px; }
 .dash-stage::before { content: none; }
 .dash-stage::after { opacity: 0.35; }
 .dash-stage:hover { border-radius: 20px 56px 20px 130px; }
@@ -1282,8 +1282,17 @@ html[data-effects='off'] .perf-row:hover {
 .dash-badge.live i { animation: dash-pulse 1.4s ease-out infinite; }
 @keyframes dash-pulse { 0% { box-shadow: 0 0 0 0 rgba(124, 227, 189, 0.6); } 100% { box-shadow: 0 0 0 7px rgba(124, 227, 189, 0); } }
 .dash-note { margin-top: 12px; font-size: 12px; line-height: 1.4; color: #9cc4ba; }
-.dash-coins { display: flex; align-items: flex-end; justify-content: center; gap: 18px; transform: translate3d(calc(var(--hx, 0) * 12px), calc(var(--hy, 0) * 8px), 0); transition: transform 360ms var(--ease); }
-.dash-coin { position: relative; width: var(--sz); height: var(--sz); padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; perspective: 900px; transition: transform 360ms var(--ease); }
+.dash-coins { container-type: inline-size; display: flex; align-items: flex-end; justify-content: center; gap: 8px; width: 100%; min-width: 0; transform: translate3d(calc(var(--hx, 0) * 12px), calc(var(--hy, 0) * 8px), 0); transition: transform 360ms var(--ease); }
+.dash-coin { --sz: 104px; position: relative; width: var(--sz); height: var(--sz); flex: 0 1 var(--sz); padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: pointer; perspective: 900px; transition: transform 360ms var(--ease); }
+.dash-coins > .dash-coin:nth-child(2) { --sz: 136px; }
+@container (max-width: 420px) {
+  .dash-coin { --sz: 86px; }
+  .dash-coins > .dash-coin:nth-child(2) { --sz: 108px; }
+}
+@container (max-width: 300px) {
+  .dash-coin { --sz: 72px; }
+  .dash-coins > .dash-coin:nth-child(2) { --sz: 90px; }
+}
 .dash-float { position: absolute; inset: 0; animation: dash-bob 5.5s ease-in-out infinite; animation-delay: var(--dl, 0s); }
 @keyframes dash-bob { 0%, 100% { transform: translateY(6px); } 50% { transform: translateY(-6px); } }
 .dash-shadow { position: absolute; left: 12%; right: 12%; bottom: -16px; height: 14px; border-radius: 50%; background: radial-gradient(rgba(0, 0, 0, 0.45), transparent 70%); animation: dash-shade 5.5s ease-in-out infinite; animation-delay: var(--dl, 0s); }

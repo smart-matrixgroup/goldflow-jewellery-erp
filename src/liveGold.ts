@@ -89,15 +89,15 @@ async function readJson(response: Response): Promise<unknown> {
 async function fromGoldApi(apiKey: string, fetchedAt: string): Promise<LiveBoard | null> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (apiKey.trim()) headers['x-gold-key'] = apiKey.trim()
-  const response = await fetch('/api/gold/price/XAU/LKR', { headers, signal: AbortSignal.timeout(8000) })
+  const response = await fetch('/api/gold/price/XAU/LKR', { headers, signal: AbortSignal.timeout(20000) })
   if (!response.ok) return null
   return parseGoldApiPayload(await readJson(response), fetchedAt)
 }
 
 async function fromPublicSpot(fetchedAt: string): Promise<LiveBoard | null> {
   const [spotResponse, fxResponse] = await Promise.all([
-    fetch('/api/spot/public-quotes/bboquotes/instrument/XAU/USD', { signal: AbortSignal.timeout(8000) }),
-    fetch('/api/fx/v6/latest/USD', { signal: AbortSignal.timeout(8000) }),
+    fetch('/api/spot/public-quotes/bboquotes/instrument/XAU/USD', { signal: AbortSignal.timeout(20000) }),
+    fetch('/api/fx/v6/latest/USD', { signal: AbortSignal.timeout(20000) }),
   ])
   if (!spotResponse.ok || !fxResponse.ok) return null
   const usd = usdFromSwissquote(await readJson(spotResponse))

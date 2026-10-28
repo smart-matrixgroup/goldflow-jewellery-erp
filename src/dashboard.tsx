@@ -26,7 +26,10 @@ export function Dashboard({ desk, board }: { desk: Shop; board: LiveBoard | null
   const seeSales = permits(desk, 'viewPos') || permits(desk, 'viewProfit') || permits(desk, 'viewLimitedProfit')
   const seeCost = permits(desk, 'viewProfit') || permits(desk, 'viewPurchases') || permits(desk, 'addProducts') || permits(desk, 'managePurchases')
   const approved = desk.rates.find((rate) => rate.status === 'approved' && rate.rateType === 'shop_selling' && rate.purity === '22K')
-  const live = seeRates && board ? board.quotes : null
+  const live = seeRates && board ? purities.flatMap((purity) => {
+    const quote = board.quotes.find((entry) => entry.purity === purity)
+    return quote ? [quote] : []
+  }) : null
   const grams = purities.map((purity) => available.filter((item) => item.purity === purity).reduce((sum, item) => sum + Number(item.netGrams), 0))
   const counts = purities.map((purity) => available.filter((item) => item.purity === purity).length)
   const stockGrams = grams.reduce((sum, grams) => sum + grams, 0)
@@ -139,10 +142,10 @@ export function Dashboard({ desk, board }: { desk: Shop; board: LiveBoard | null
                 <p className="dash-note">{live ? 'The coins use the market board. Hover or tap a coin for the source. The till still sells on the approved shop rate.' : 'This is the rate the till uses. It is not a live quote.'}</p>
               </div>
               <div className="dash-coins">
-                {live ? live.map((quote, index) => (
-                  <Coin key={quote.purity} purity={quote.purity} cents={quote.cents} figure={figure(quote.cents)} size={index === 1 ? '168px' : '124px'} delay={`${index * -1.4}s`} back={board?.source ?? 'Market board'} />
+                {live && live.length === 3 ? live.map((quote, index) => (
+                  <Coin key={quote.purity} purity={quote.purity} cents={quote.cents} figure={figure(quote.cents)} delay={`${index * -1.4}s`} back={board?.source ?? 'Market board'} />
                 )) : approved ? (
-                  <Coin purity="22K" cents={approved.cents} figure={figure(approved.cents)} size="180px" delay="-2s" back={approved.source} />
+                  <Coin purity="22K" cents={approved.cents} figure={figure(approved.cents)} delay="-2s" back={approved.source} />
                 ) : <p className="dash-note">No approved selling rate. Nothing can be sold at zero.</p>}
               </div>
             </article>
@@ -198,10 +201,10 @@ function GemMark() {
   )
 }
 
-function Coin({ purity, cents, figure, size, delay, back }: { purity: string; cents: number; figure: string; size: string; delay: string; back: string }) {
+function Coin({ purity, cents, figure, delay, back }: { purity: string; cents: number; figure: string; delay: string; back: string }) {
   const [flip, setFlip] = useState(false)
   return (
-    <button type="button" className={`dash-coin ${flip ? 'flip' : ''}`} style={{ '--sz': size, '--dl': delay } as CSSProperties} aria-label={`${purity} ${figure} LKR per gram`} onClick={() => setFlip((open) => !open)}>
+    <button type="button" className={`dash-coin ${flip ? 'flip' : ''}`} style={{ '--dl': delay } as CSSProperties} aria-label={`${purity} ${figure} LKR per gram`} onClick={() => setFlip((open) => !open)}>
       <span className="dash-float">
         <span className="dash-cf">
           <span className="dash-face dash-front">
